@@ -1,0 +1,55 @@
+name: Docker Container Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Run Docker container
+        run: |
+          # Run the Docker container in detached mode with port 3040 exposed
+          docker run -d --name test-container -p 3040:3040 pawanosman/chatgpt:latest
+          
+          # Give the container some time to start
+          echo "Sleeping for 20 seconds"
+          sleep 20
+
+          docker ps
+
+          # Send a curl request to the running container and print the output
+          curl -vv http://localhost:3040
+
+      - name: Send API request
+        run: |
+          curl -vv --location 'https://localhost:3040/v1/chat/completions' \
+          --header 'Authorization: Bearer pk-123' \
+          --header 'Content-Type: application/json' \
+          --data '{
+              "model": "pai-001-light",
+              "max_tokens": 100,
+              "messages": [
+                  {
+                      "role": "system",
+                      "content": "You are a helpful assistant."
+                  },
+                  {
+                      "role": "user",
+                      "content": "Who are you?"
+                  }
+              ]
+          }'
+
+      - name: Clean up
+        run: |
+          # Stop and remove the container
+          docker stop test-container
+          docker rm test-container
